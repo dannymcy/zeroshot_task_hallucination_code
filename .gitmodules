@@ -1,0 +1,8 @@
+[submodule "spatialpin"]
+	path = spatialpin
+	url = https://github.com/dannymcy/spatialpin.git
+	branch = main
+[submodule "lama"]
+	path = lama
+	url = https://github.com/dannymcy/lama.git
+	branch = main
