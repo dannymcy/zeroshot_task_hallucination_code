@@ -1,97 +1,84 @@
 # SpatialPIN: Enhancing Spatial Reasoning Capabilities of Vision-Language Models through Prompting and Interacting 3D Priors
-This is the implementation for the NeurIPS 2024 [paper](https://arxiv.org/abs/2403.13438). We release the code for our most complex application:  Discovering and Planning for Robotics Tasks from a Single Image. For more information, please check the [project webpage](https://dannymcy.github.io/zeroshot_task_hallucination/).
+This is the implementation for the NeurIPS 2024 [paper](https://arxiv.org/abs/2403.13438). We release the code for our most complex application: Discovering and Planning for Robotics Tasks from a Single Image. For more information, please check the [project webpage](https://dannymcy.github.io/zeroshot_task_hallucination/).
+
+This code implementation is of the first version of our [paper](https://arxiv.org/abs/2403.13438v3), so there are some implementation discrepancies, but the functionality remains the same!
 
 ![SpatialPIN Teaser](teaser.jpg)
 
 ## Environment Setup
 > Note: This code was developed on Ubuntu 20.04 with CUDA 11.8. The implementation of SpatialPIN depends on two seperate Github repos.
 
-<!-- Clone the repo.
+Clone the repo.
 ```
-git clone https://github.com/lijiaman/chois_release.git
-cd chois_release/
+git clone --recurse-submodules https://github.com/dannymcy/zeroshot_task_hallucination_code.git
+cd zeroshot_task_hallucination_code
 ```
-Create a virtual environment using Conda and activate the environment. 
+Set up separate Python environments.
+For SpatialPIN main code: 
 ```
-conda create -n chois_env python=3.8
-conda activate chois_env 
+cd spatialpin
+conda env create -f conda_env.yaml
+conda activate /your_dir/spatialpin/env
 ```
-Install PyTorch. 
+For LaMa image inpainting:
 ```
-conda install pytorch==1.11.0 torchvision==0.12.0 torchaudio==0.11.0 cudatoolkit=11.3 -c pytorch
+cd ..
+cd lama
+conda env create -f conda_env.yaml
+conda activate /your_dir/lama/env
 ```
-Install PyTorch3D. 
+For both, install CUDA and PyTorch appropriate versions for your system. For example:
 ```
-conda install -c fvcore -c iopath -c conda-forge fvcore iopath
-conda install -c bottler nvidiacub
-pip install --no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py38_cu113_pyt1110/download.html
-```
-Install human_body_prior. 
-```
-git clone https://github.com/nghorbani/human_body_prior.git
-pip install tqdm dotmap PyYAML omegaconf loguru
-cd human_body_prior/
-python setup.py develop
-```
-Install BPS.
-```
-pip install git+https://github.com/otaheri/chamfer_distance
-pip install git+https://github.com/otaheri/bps_torch
-```
-Install other dependencies. 
-```
-pip install -r requirements.txt 
+pip install --no-cache-dir torch==2.1.1+cu118 -f https://download.pytorch.org/whl/torch_stable.html
+pip install --no-cache-dir torchvision --extra-index-url https://download.pytorch.org/whl/cu118
 ```
 
 ### Prerequisites 
-Please download [SMPL-X](https://smpl-x.is.tue.mpg.de/index.html) and put the model to ```data/smpl_all_models/```.
+Prepare ```GPT API``` from [here](https://platform.openai.com/docs/api-reference/introduction) and put it in ```.../spatialpin/main/gpt_4/query.py``` line 7.
+Open a public GitHub repo and put your Git token and repo name in ```.../spatialpin/main/process_3d.py``` line 476 and 477 (Github repo name is of format ```git_account_name/repo_name```).
+Prepare ```One-2-3-45++ API``` for single-view object reconstruction from [here](https://www.sudo.ai/account) and put it in ```.../spatialpin/main/process_3d.py``` line 478.
 
-If you would like to generate visualizations, please download [Blender](https://www.blender.org/download/) first. And modify ```BLENDER_PATH, BLENDER_UTILS_ROOT_FOLDER, BLENDER_SCENE_FOLDER``` in line 8-10 of ```chois_release/manip/vis/blender_vis_mesh_motion.py```. 
+Download Segment Anything backbone by running ```.../spatialpin/main/download_sam.py```
 
-Please download all the [data](https://drive.google.com/file/d/1ZG-9--RfUWj5oWYnvcONNuRuxaH_Zpw1/view?usp=sharing) and put ```processed_data``` to your desired location ```your_path/processed_data```.  
 
-### Testing: Generating single-window interaction sequences for OMOMO objects.  
-Please download pretrained [model](https://drive.google.com/drive/folders/1gqw3EHiEMqw1OXqH92Axoc5FJntA_E5x?usp=sharing) and put ```pretrained_models/``` to the root folder. If you'd like to test on 3D-FUTURE objects, please add ```--unseen_objects```. For quantitative evaluation please add ```--for_quant_eval```.
-```
-sh scripts/test_chois_single_window.sh 
-```
+### Inference: Step 1  
+Put the images containing multiple objects into  ```.../spatialpin/test_data/Real/dir_name/scene_<integer>/<integer>_color.png```. Each image should be in its own folder.
+Update ```.../spatialpin/test_data/Real/test_list_subset.txt``` using the example format.
 
-### Testing: Generating scene-aware long sequence for OMOMO objects.  
-Note that this following command will generate long sequence visualizations in an empty floor. If you'd like to visualize in a 3D scene, please check next instruction below. 
+Navigate to the spatialpin folder:
 ```
-sh scripts/test_chois_long_seq_in_scene.sh 
+sh ./runner.sh main/process_2d.py
 ```
+This step will output inpainting masks for each identified object.
 
-### Run visualization for interaction sequence and 3D scenes 
-Please run the command to generate long sequence first. This will save human and object meshes to .ply file. If you want to skip the visualization for long sequence in an empty floor, you can change line 2449 in ```trainer_chois.py```, set ```save_obj_only``` to True. 
-```
-sh scripts/test_chois_long_seq_in_scene.sh 
-```
-Then edit line 109 and line 110 at ```utils/vis_utils/render_res_w_blender.py``` to call blender and visualize the generated sequence in the given 3D scene.  
-```
-cd utils/vis_utils
-python render_res_w_blender.py 
-```
 
-### Training 
-Train CHOIS (generating object motion and human motion given text, object geometry, and initial states). Please replace ```--entity``` with your account name. Note that when you first run this script, it need to extract BPS representation for all the sequences and may take more than 1 hour to finish the data processing. It requires about 32G disk space. 
+### Inference: Step 2
+Navigate to the lama folder:
 ```
-sh scripts/train_chois.sh
+export TORCH_HOME=$(pwd) && export PYTHONPATH=$(pwd)
+python bin/predict_obj.py
+python bin/predict_bg.py
 ```
+This step will output inpainted masks for each object and the inpainted background.
 
-### Computing Evaluation Metrics (FID, R-precision)
-We followed prior work on human motion generation (Generating Diverse and Natural 3D Human Motions from Text. CVPR 2022.) for evaluating human motion quality and text-motion consistency. Since the motion distribution in our paper is different from HumanML3D, we trained corresponding feature extractors on OMOMO dataset (Object Motion Guided Human Motion Synthesis. SIGGRAPH Asia 2023.). We provided trained feature extractors [here](https://drive.google.com/drive/folders/1hGDYEy91Tk7FC1U_8BouhlSp5RQkEJuY?usp=sharing). To run this evaluation, please check the code and modify corresponding paths for feature extractors and the results that you need to evaluate. 
-```
-cd t2m_eval/
-python final_evaluations.py 
-```
 
-### Generating new data for scene-aware interaction synthesis.  
-We used the following code for generating waypoints in 3D scenes. If you'd like to generate more data, please check ```create_eval_data.py```. 
+### Inference: Step 3
+Navigate to the spatialpin folder:
 ```
-cd utils/create_eval_data/
-python create_eval_data.py 
+sh ./runner.sh main/process_3d.py
 ```
+This step will generate the discovered robotic tasks and 3D models of each object.
+
+
+### Inference: Step 4
+Navigate to the spatialpin folder:
+```
+blenderproc run main/render_animate.py
+```
+This step will generate the planned robotic task trajectories and render them as videos.
+
+For information that tests the spatial reasoning capabilities of VLMs, refer to ```.../spatialpin/main/render_animate.py``` line 926.
+
 
 ### Citation
 ```
@@ -109,4 +96,4 @@ We adapted some code from other repos in data processing, implementation, evalua
 https://github.com/zubair-irshad/shapo
 https://github.com/advimman/lama
 https://github.com/luca-medeiros/lang-segment-anything
-https://github.com/PKU-YuanGroup/Video-LLaVA -->
+https://github.com/PKU-YuanGroup/Video-LLaVA
