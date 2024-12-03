@@ -35,7 +35,9 @@ pip install --no-cache-dir torchvision --extra-index-url https://download.pytorc
 
 ### Prerequisites 
 Prepare ```GPT API``` from [here](https://platform.openai.com/docs/api-reference/introduction) and put it in ```.../spatialpin/main/gpt_4/query.py``` line 7.
+
 Open a public GitHub repo and put your Git token and repo name in ```.../spatialpin/main/process_3d.py``` line 476 and 477 (Github repo name is of format ```git_account_name/repo_name```).
+
 Prepare ```One-2-3-45++ API``` for single-view object reconstruction from [here](https://www.sudo.ai/account) and put it in ```.../spatialpin/main/process_3d.py``` line 478.
 
 Download Segment Anything backbone by running ```.../spatialpin/main/download_sam.py```
